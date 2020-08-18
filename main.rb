@@ -3,6 +3,8 @@ require 'thor'
 require 'json'
 
 class Setup < Thor
+  package_name 'hinatazakaBlogCrawler'
+  default_command :about
   no_commands do
     def setupDB
       @database = SQLite3::Database.new('main.db')
@@ -22,9 +24,13 @@ class Setup < Thor
         @database.execute(createTableSQL)
       end
     end
-    def getDBdata
+    def getDBdata(id = nil)
       @database.results_as_hash = true
-      result = @database.execute('SELECT * FROM oshilist')
+      if id == nil
+        result = @database.execute('SELECT * FROM oshilist')
+      else
+        result = @database.execute('SELECT * FROM oshilist WHERE id = ?;',id)
+      end
       @database.results_as_hash = false
       return result
     end
@@ -68,7 +74,7 @@ class Setup < Thor
       memberNames = Array.new
       memberName = String.new
       memberID = nil
-      dbData = self.getDBdata
+      dbData = self.getDBdata()
       if dbData.length ==0
         puts 'データが登録されていません'
         exit
@@ -97,11 +103,33 @@ class Setup < Thor
       end
       return {memberName:memberName,memberID:memberID}
     end
+    def deleteDB(id=nil)
+      if id == nil
+        @database.execute('DELETE FROM oshilist;')
+      else
+        @database.execute('DELETE FROM oshilist WHERE id = ?',id)
+      end
+    end
   end
+  desc 'about','このツールの概要を表示します'
+  def about
+  message = <<~EOS
+    =====================
+    hinatazakaBlogCrawler
+    =====================\n
+    このツールは日向坂46のブログから画像をスクレイピングするCLIツールです。
+    使用手順は以下の通りです。\n
+    1)このスクリプトでスクレイピングするブログのメンバーとDLするディレクトリのパスを登録する。
+    2)scrape.rbを実行する。\n
+    scrape.rbをcron等に設定することにより定期的なスクレイピングも可能です。
+    このスクリプトの使用方法はhelpコマンドで確認できます。
+  EOS
+  puts message
+  end  
   desc 'add','スプレイピングするブログを追加します'
   def add
     self.setupDB
-    puts "スクレイピングするブログを追加します。\nメンバーの左に書かれた番号を入力してください。"
+    puts "スクレイピングを行うブログを追加します。\nメンバーの左に書かれた番号を入力してください。"
     memberNames = @memberIDs.keys
     memberNames.each.with_index(1) do |value,i|
       puts "#{i}):#{value}"
@@ -115,16 +143,12 @@ class Setup < Thor
         puts "数値を入力してください"
         next
       elsif memberNames.length < inputNum.to_i || inputNum.to_i <= 0 
-        puts "1～22の値を入力してください"
+        puts "1～#{memberNames.length}の値を入力してください"
         next
       else
         memberName = memberNames[inputNum.to_i-1]
         memberID = @memberIDs[memberName]
-        registeredIDs = Array.new
-        self.getDBdata.each do |hash|
-          registeredIDs.push(hash['id'])
-        end
-        if registeredIDs.include?(memberID)
+        if self.getDBdata(memberID).length != 0
           puts "#{memberName}はすでに登録されています"
           next
         end
@@ -142,20 +166,73 @@ class Setup < Thor
     writeDB(data[:memberID],data[:memberName],inputPath,true)
   end
   desc 'delete','設定を削除します'
+  method_option :all,aliases: '-a', desc: 'すべての設定を削除します'
+  method_option :force,aliases: '-f',desc: '確認をスキップして強制的にコマンドを実行します'  
   def delete
     self.setupDB
-    data = self.pickUpDBdata('設定を削除します。どのメンバーの設定を削除しますか？')
-    loop do
-      print "#{data[:memberName]}の設定を削除します。本当に削除しますか？(y/n)--->"
-      deleteYN = ::STDIN.gets.chomp
-      if /y/i =~ deleteYN
-        @database.execute('DELETE FROM oshilist WHERE id = ?;',data[:memberID])
-        puts 'データベースから削除されました。'
-        break
-      elsif /n/i =~ deleteYN
-        break
+    if options.all == 'all' && options.force == 'force'
+      self.deleteDB()
+      puts 'すべての設定を削除しました'
+    elsif options.all == 'all'
+      loop do
+        print 'すべての設定を削除します。本当に削除しますか?(y/n)--->'
+        deleteAllYN = ::STDIN.gets.chomp
+        if /y/i =~ deleteAllYN
+          self.deleteDB()
+          puts 'すべての設定を削除しました。'
+        elsif /n/i =~ deleteAllYN
+          break
+        else
+          next
+        end
+      end
+    else
+      data = self.pickUpDBdata('設定を削除します。どのメンバーの設定を削除しますか？')
+      if options.force == 'force'
+        self.deleteDB(data[:memberID])
+        puts "#{data[:memberName]}の設定を削除しました。"
       else
-        next
+        loop do
+          print "#{data[:memberName]}の設定を削除します。本当に削除しますか？(y/n)--->"
+          deleteYN = ::STDIN.gets.chomp
+          if /y/i =~ deleteYN
+            self.deleteDB(data[:memberID])
+            puts 'データベースから削除されました。'
+            break
+          elsif /n/i =~ deleteYN
+            break
+          else
+            next
+          end
+        end
+      end
+    end
+  end
+  desc 'show [メンバーの名前]','現在登録されている設定とブログの最終更新日時を表示します'
+  def show(name = nil)
+    self.setupDB
+    dbdata = self.getDBdata()
+    memberNames = Array.new
+    if dbdata.length == 0
+      puts 'データが登録されていません'
+    else
+      puts '==============================================================='
+      puts '      メンバー     |     DLパス      |     最終更新日時        '
+      puts '==============================================================='
+      if name == nil
+        dbdata.each do |hash|
+          puts "  #{@memberIDs.invert[hash['id']]}   |   #{hash['path']}   |   #{hash['lastupdate']}" 
+        end
+      elsif @memberIDs.include?(name)
+        memberID = @memberIDs[name]
+        dbdata_search = self.getDBdata(memberID)
+        if dbdata_search.length == 0
+          puts "\n#{name}は登録されていません"
+        else
+          puts "  #{@memberIDs.invert[dbdata_search[0]['id']]}   |   #{dbdata_search[0]['path']}   |   #{dbdata_search[0]['lastupdate']}"
+        end 
+      else
+        puts "'#{name}'は日向坂46のメンバーではありません"
       end
     end
   end
