@@ -36,6 +36,7 @@ end
 
 db = SQLite3::Database.new("main.db")
 db.results_as_hash = true
+db.busy_timeout = 6000
 
 infolog = Logger.new(STDOUT)
 errlog = Logger.new(STDERR)

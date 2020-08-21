@@ -23,6 +23,7 @@ class Setup < Thor
       if @database.execute(searchTableSQL).length==0
         @database.execute(createTableSQL)
       end
+      @database.busy_timeout = 6000
     end
     def getDBdata(id = nil)
       @database.results_as_hash = true
