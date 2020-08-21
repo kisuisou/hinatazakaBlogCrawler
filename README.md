@@ -16,9 +16,9 @@ cron等に設定すれば定期的なスクレイピングも可能です。
 
 ##### gem
 
-* Thor
-* Mechanize
-* sqlite3
+* Thor 1.0.1
+* Mechanize 2.7.6
+* sqlite3 1.4.2
 
 # Usage
 
