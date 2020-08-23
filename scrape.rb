@@ -13,23 +13,28 @@ class HinataBlog < Mechanize
   def access(id)
     blogpage = self.get("#{URL}&ct=#{id}")
     @httpStatuscode = blogpage.code
-    @allArticle = blogpage.search('div .p-blog-article')
-    @topArticle = @allArticle[0]
-    @lastupdate = @topArticle.css('div .c-blog-article__date').inner_text.strip
+    @allArticles = blogpage.search('div .p-blog-article')
+    topArticle = @allArticles[0]
+    @lastupdate = topArticle.css('div .c-blog-article__date').inner_text.strip
   end
   def imgDL(path,isGetAllArticle)
-    article = isGetAllArticle ? @allArticle : @topArticle 
-    article.css('img').each do |image|
-      src = image.attribute('src').value
-      filepath = "#{path}#{::File.basename(src)}"
-      ::URI.open(filepath,'wb') do |pass|
-        ::URI.open(src) do |recieve|
-          pass.write(recieve.read)
+    @allArticles.each do |article|
+      article.css('img').each do |image|
+        src = image.attribute('src').value
+        article_date = article.css('div .c-blog-article__date').inner_text.strip
+        filename = "#{article_date.gsub(/( |:)+/,'_')}_#{::File.basename(src)}"
+        filepath = "#{path}#{filename}"
+          ::URI.open(filepath,'wb') do |pass|
+          ::URI.open(src) do |recieve|
+            pass.write(recieve.read)
+          end
         end
       end
+      unless isGetAllArticle
+        break
+      end
     end
-  end
-    
+  end  
   URL = 'https://www.hinatazaka46.com/s/official/diary/member/list?ima=0000'
   attr_reader:lastupdate,:topArticle,:httpStatuscode
 end
