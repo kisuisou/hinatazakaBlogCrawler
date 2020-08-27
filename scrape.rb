@@ -21,12 +21,14 @@ class HinataBlog < Mechanize
     @allArticles.each do |article|
       article.css('img').each do |image|
         src = image.attribute('src').value
-        article_date = article.css('div .c-blog-article__date').inner_text.strip
-        filename = "#{article_date.gsub(/( |:)+/,'_')}_#{::File.basename(src)}"
-        filepath = "#{path}#{filename}"
-          ::URI.open(filepath,'wb') do |pass|
-          ::URI.open(src) do |recieve|
-            pass.write(recieve.read)
+        unless src == ''
+          article_date = article.css('div .c-blog-article__date').inner_text.strip
+          filename = "#{article_date.gsub(/( |:)+/,'_')}_#{::File.basename(src)}"
+          filepath = "#{path}#{filename}"
+            ::URI.open(filepath,'wb') do |pass|
+            ::URI.open(src) do |recieve|
+              pass.write(recieve.read)
+            end
           end
         end
       end
