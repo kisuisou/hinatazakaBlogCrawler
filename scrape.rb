@@ -27,7 +27,7 @@ class HinataBlog < Mechanize
       article.css('img').each do |image|
         src = image.attribute('src').value
         next if src == ''
-        article_date = article.css('div .c-blog-article__date').inner_text.strip
+        article_date = @update_time_datas[num]
         filename = "#{article_date.gsub(/( |:)+/,'_')}_#{::File.basename(src)}"
         filepath = "#{path}#{filename}"
         ::URI.open(filepath,'wb') do |pass|
