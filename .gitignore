@@ -1,0 +1,5 @@
+*.db
+vendor/
+.bundle/
+Gemfile.lock
+*.log
