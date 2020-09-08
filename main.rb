@@ -111,6 +111,11 @@ class Setup < Thor
         @database.execute('DELETE FROM oshilist WHERE id = ?',id)
       end
     end
+    def printHeader
+      puts '==============================================================='
+      puts '      メンバー     |     DLパス      |     最終更新日時        '
+      puts '==============================================================='
+    end
   end
   desc 'about','このツールの概要を表示します'
   def about
@@ -217,10 +222,8 @@ class Setup < Thor
     if dbdata.length == 0
       puts 'データが登録されていません'
     else
-      puts '==============================================================='
-      puts '      メンバー     |     DLパス      |     最終更新日時        '
-      puts '==============================================================='
       if name == nil
+        self.printHeader
         dbdata.each do |hash|
           puts "  #{@memberIDs.invert[hash['id']]}   |   #{hash['path']}   |   #{hash['lastupdate']}" 
         end
@@ -228,8 +231,9 @@ class Setup < Thor
         memberID = @memberIDs[name]
         dbdata_search = self.getDBdata(memberID)
         if dbdata_search.length == 0
-          puts "\n#{name}は登録されていません"
+          puts "#{name}は登録されていません"
         else
+          self.printHeader
           puts "  #{@memberIDs.invert[dbdata_search[0]['id']]}   |   #{dbdata_search[0]['path']}   |   #{dbdata_search[0]['lastupdate']}"
         end 
       else
