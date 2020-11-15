@@ -25,7 +25,9 @@ class HinataBlog < Mechanize
     articleNum.times do |num|
       article = @allArticles[num]
       article.css('img').each do |image|
-        src = image.attribute('src').value
+        src = image.attribute('src')
+        next if src == nil
+        src = src.value
         next if src == ''
         article_date = @update_time_datas[num]
         filename = "#{article_date.gsub(/( |:)+/,'_')}_#{::File.basename(src)}"
