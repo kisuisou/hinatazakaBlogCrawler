@@ -73,7 +73,11 @@ db.execute('SELECT * FROM oshilist') do |row|
   when nil
     articleNum = blog.update_time_datas.length
   else
-    articleNum = blog.update_time_datas.index(row['lastupdate'])+1
+    if blog.update_time_datas.include?(row['lastupdate'])
+      articleNum = blog.update_time_datas.index(row['lastupdate'])+1
+    else
+      articleNum = blog.update_time_datas.length
+    end
   end
   blog.imgDL(row['path'],articleNum)
   updateSQL = 'UPDATE oshilist SET lastupdate = :lastupdate WHERE id = :id;'
