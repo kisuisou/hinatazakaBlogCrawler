@@ -26,9 +26,13 @@ class HinataBlog < Mechanize
       article = @allArticles[num]
       article.css('img').each do |image|
         src = image.attribute('src')
-        next if src == nil
-        src = src.value
-        next if src == ''
+        if src == nil
+          next
+        elsif src.value == '' || !(%r|\Ahttps://cdn\.hinatazaka46\.com| =~ src.value)
+          next
+        else
+          src = src.value
+        end
         article_date = @update_time_datas[num]
         filename = "#{article_date.gsub(/( |:)+/,'_')}_#{::File.basename(src)}"
         filepath = "#{path}#{filename}"
@@ -79,7 +83,13 @@ db.execute('SELECT * FROM oshilist') do |row|
       articleNum = blog.update_time_datas.length
     end
   end
-  blog.imgDL(row['path'],articleNum)
+  begin
+    blog.imgDL(row['path'],articleNum)
+  rescue => e
+    errlog.error(e.message.to_s)
+    errlog.error("Scraping failed")
+    next
+  end
   updateSQL = 'UPDATE oshilist SET lastupdate = :lastupdate WHERE id = :id;'
   db.execute(updateSQL,:lastupdate => blog.lastupdate,:id => row['id'])
   infolog.info("Scraping was successful:#{memberID.invert[row['id']]}")
